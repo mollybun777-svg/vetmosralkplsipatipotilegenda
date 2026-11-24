@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wishlist</title>
+<style>
+:root{
+ --bg:#09080c;--panel:#141117;--panel2:#1b151e;--ink:#eee5eb;
+ --muted:#a99aa8;--accent:#b58aa8;--line:#382b39;--wine:#57283f;
+}
+*{box-sizing:border-box}
+body{
+ margin:0;color:var(--ink);
+ background:
+  radial-gradient(ellipse at 50% -12%,#432438 0%,transparent 42%),
+  radial-gradient(ellipse at 0% 55%,#201322 0%,transparent 35%),
+  var(--bg);
+ font-family:Georgia,"Times New Roman",serif;
+ min-height:100vh;
+}
+header{padding:62px 20px 36px;text-align:center}
+.tiny{letter-spacing:.34em;text-transform:uppercase;font:10px Arial,sans-serif;color:#b99aaa}
+h1{font-size:clamp(42px,8vw,72px);font-weight:400;margin:17px 0 10px;letter-spacing:.04em;text-shadow:0 0 24px #9b527766}
+header p{font:13px Arial,sans-serif;color:var(--muted);letter-spacing:.04em}
+.wrap{max-width:1050px;margin:auto;padding:0 20px 60px}
+.note{max-width:660px;margin:0 auto 34px;padding:15px 19px;border:1px solid var(--line);border-radius:3px;background:#120f15cc;text-align:center;font:12px/1.7 Arial,sans-serif;color:#c0b1bd}
+.tabs{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:0 0 27px}
+.tabs button{border:1px solid var(--line);background:#151119;color:#c2b2bf;padding:10px 16px;cursor:pointer;font:11px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;transition:.2s}
+.tabs button:hover,.tabs button.active{background:#49263d;color:#fff;border-color:#87536f;box-shadow:0 0 15px #7a3e6250}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.card{background:linear-gradient(160deg,#1b151e,#100e13);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 12px 30px #0008;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);border-color:#76506a}
+.card.booked{opacity:.82;border-color:#2b232c}
+.pic{height:205px;background:radial-gradient(circle at 50% 45%,#45283e,#1b1420 65%,#100d13);display:grid;place-items:center;color:#d0a9c1;font-size:42px;position:relative;overflow:hidden}
+.pic:after{content:"";position:absolute;inset:10px;border:1px solid #8c607344;pointer-events:none;z-index:2}
+.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.pic span.soon{font:9px Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;position:absolute;bottom:17px;color:#b69aaa;z-index:2;background:#100d13b8;padding:2px 6px;border-radius:2px}
+.body{padding:18px;display:flex;flex-direction:column;gap:10px;flex:1}
+.category{font:9px Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#c18eaa}
+h2{font-size:21px;font-weight:400;margin:0;line-height:1.25}
+.desc{font:12px/1.6 Arial,sans-serif;color:var(--muted);margin:0;min-height:38px}
+.actions{display:flex;gap:8px;margin-top:auto;padding-top:7px;flex-wrap:wrap}
+a.link,.reserve,.cancel{flex:1;min-width:90px;text-align:center;text-decoration:none;padding:11px 8px;font:11px Arial,sans-serif;letter-spacing:.04em}
+a.link{border:1px solid #493849;color:#d8c7d3;background:#17121a}
+a.link:hover{border-color:#87536f;color:#fff}
+a.link.disabled{opacity:.65;pointer-events:none}
+.reserve{border:1px solid #70445f;background:#49263d;color:#fff;cursor:pointer;transition:.2s}
+.reserve:hover:not(:disabled){background:#63354f}
+.reserve:disabled{background:#29232b;border-color:#39303b;color:#938591;cursor:default}
+.cancel{border:1px solid #4a3544;background:#1d1620;color:#d4bfd0;cursor:pointer;transition:.2s}
+.cancel:hover:not(:disabled){background:#322334;color:#fff;border-color:#87536f}
+.cancel:disabled{opacity:.6;cursor:default}
+.status{font:10px Arial,sans-serif;color:#b6a4b2;min-height:13px}
+.card.booked .status{color:#d59ab9}
+footer{text-align:center;color:#806e7d;font:10px Arial,sans-serif;letter-spacing:.18em;padding:24px}
+@media(max-width:520px){header{padding-top:44px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.pic{height:145px}.body{padding:12px}h2{font-size:17px}.actions{flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+ <div class="tiny">✦✦✦✦✦✦✦✦✦✦✦</div>
+ <h1>wishlist ♡</h1>
+</header>
+<main class="wrap">
+ <div class="note">Если хочешь подарить что-то из списка — нажми «Забронировать», чтобы остальные увидели, что подарок уже занят. Если передумаешь — нажми «Отменить».</div>
+ <nav class="tabs" aria-label="Категории">
+  <button class="active" data-filter="all">Все</button>
+  <button data-filter="manga">Манга</button>
+  <button data-filter="figures">Фигурки</button>
+  <button data-filter="other">Прочее</button>
+ </nav>
+ <section class="grid" id="items"></section>
+</main>
+<script>
+const DB_URL = "https://ilobemisderyveritiwarya-default-rtdb.europe-west1.firebasedatabase.app/bookings.json";
+
+const gifts = [
+ {id:"punpun",cat:"manga",label:"Манга",title:"Спокойной ночи, Пунпун",desc:"начиная со 2-й части",image:"https://i.ibb.co/ynrJZ2sg/OIP.webp",alt:"Обложка второго тома манги Спокойной ночи, Пунпун",url:"https://book-ye.com.ua/khudozhnya-literatura/komiksy/manga/dobranich-punpune-chastyna-2/?q=%D0%BF%D1%83%D0%BD%D0%BF%D1%83%D0%BD",symbol:"☾"},
+ {id:"another",cat:"manga",label:"Манга",title:"Иная",desc:"манга «Иная» (Another).",image:"https://i.ibb.co/Q3sHn5Lp/photo-2026-11-23-21-01-29.jpg",alt:"Обложка манги Иная",url:"https://www.pulsar.ua/ru/products/manga-inaya-another-tom-1/",symbol:"♣"},
+ {id:"saya",cat:"figures",label:"Фигурки",title:"фигурка по Saya no Uta",desc:"любая фигурка с Саей.",image:"https://i.ibb.co/0RRXQFP3/photo-2026-11-23-16-43-01.jpg",alt:"Персонаж Сая из Saya no Uta",symbol:"♡"},
+ {id:"rei",cat:"figures",label:"Фигурки",title:"Аянами Рей",desc:"любая фигурка Рей.",image:"https://i.ibb.co/qLGkWwrS/photo-2026-11-23-16-43-58.jpg",alt:"Рей Аянами из Neon Genesis Evangelion",symbol:"✧"},
+ {id:"anime",cat:"figures",label:"Фигурки",title:"Аниме-фигурки",desc:"секси аниме тяночки любые",image:"https://i.ibb.co/Fb68v3yV/photo-2026-11-23-20-46-55.jpg",alt:"Аниме-фигурки",symbol:"♠"},
+ {id:"flowerknows",cat:"other",label:"Прочее",title:"Хайлайтер Flower Knows (L04)",desc:"",image:"https://i.ibb.co/8D88bm7S/photo-2026-11-23-16-40-37.jpg",alt:"Косметика Flower Knows",url:"https://a.aliexpress.com/_ExUt5Ny",symbol:"✿"},
+ {id:"chokers",cat:"other",label:"Прочее",title:"Чокеры",desc:"Какие-нибудь прикольные чокеры",image:"https://i.ibb.co/KpdyV5f7/photo-2026-11-24-09-38-23.jpg",alt:"Чокеры",symbol:"♢"},
+ {id:"nyuroki",cat:"other",label:"Прочее",title:"ньюроки",desc:"40",image:"https://i.ibb.co/4nbDybM7/M-TANK120-NSHLACE-S1-jpg.webp",alt:"Ботинки New Rock",url:"https://www.metalshop.com.ua/p/117412-vzuttia-new-rock-italiiskyi-nehro-m-tank120nshlace-s1/",symbol:"✧"},
+ {id:"easter-egg",cat:"other",label:"Прочее",title:"ПАСХАЛКА",desc:"zxcursed",image:"https://i.ibb.co/k6yqzkQ3/kursed-zxcursed-3-1024x801.webp",alt:"Пасхалка",url:"https://www.instagram.com/zxcursed",symbol:"✦"}
+];
+
+const root = document.getElementById("items");
+let filter = "all";
+let booked = {};
+let isLoaded = false;
+
+async function loadBookings() {
+ try {
+  const res = await fetch(DB_URL, { cache: "no-store" });
+  const data = await res.json();
+  booked = (data && typeof data === "object") ? data : {};
+ } catch (e) {
+  console.error("Ошибка загрузки базы:", e);
+ }
+ isLoaded = true;
+ render();
+}
+
+async function bookGift(id, btn) {
+ if (booked[id]) return;
+ if (!confirm("Забронировать этот подарок, чтобы другие видели, что он уже занят?")) return;
+
+ btn.disabled = true;
+ btn.textContent = "Сохранение...";
+
+ try {
+  const res = await fetch(DB_URL, {
+   method: "PATCH",
+   headers: { "Content-Type": "application/json" },
+   body: JSON.stringify({ [id]: true })
+  });
+  if (!res.ok) throw new Error("Ошибка сохранения");
+  booked[id] = true;
+  render();
+ } catch (e) {
+  alert("Не удалось сохранить бронь. Проверьте интернет и попробуйте ещё раз.");
+  btn.disabled = false;
+  btn.textContent = "Забронировать";
+ }
+}
+
+async function cancelBooking(id, btn) {
+ if (!booked[id]) return;
+ if (!confirm("Отменить бронь с этого подарка?")) return;
+
+ btn.disabled = true;
+ btn.textContent = "Отмена...";
+
+ try {
+  const res = await fetch(DB_URL, {
+   method: "PATCH",
+   headers: { "Content-Type": "application/json" },
+   body: JSON.stringify({ [id]: null })
+  });
+  if (!res.ok) throw new Error("Ошибка отмены");
+  delete booked[id];
+  render();
+ } catch (e) {
+  alert("Не удалось отменить бронь. Проверьте интернет и попробуйте ещё раз.");
+  btn.disabled = false;
+  btn.textContent = "Отменить";
+ }
+}
+
+function render() {
+ root.innerHTML = "";
+ gifts.filter(g => filter === "all" || g.cat === filter).forEach(g => {
+  const isBooked = Boolean(booked[g.id]);
+  const card = document.createElement("article");
+  card.className = "card" + (isBooked ? " booked" : "");
+
+  const pic = document.createElement("div");
+  pic.className = "pic";
+
+  const fallback = document.createElement("span");
+  fallback.textContent = g.symbol;
+
+  const soon = document.createElement("span");
+  soon.className = "soon";
+  soon.textContent = "photo coming soon";
+
+  if (g.image) {
+   const img = document.createElement("img");
+   img.src = g.image;
+   img.alt = g.alt || g.title;
+   img.addEventListener("error", () => {
+    img.remove();
+    pic.appendChild(fallback);
+    pic.appendChild(soon);
+   });
+   pic.appendChild(img);
+  } else {
+   pic.appendChild(fallback);
+   pic.appendChild(soon);
+  }
+
+  const body = document.createElement("div");
+  body.className = "body";
+
+  const cat = document.createElement("div");
+  cat.className = "category";
+  cat.textContent = g.label;
+
+  const title = document.createElement("h2");
+  title.textContent = g.title;
+
+  const desc = document.createElement("p");
+  desc.className = "desc";
+  desc.textContent = g.desc || "";
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+
+  if (g.url) {
+   const link = document.createElement("a");
+   link.className = "link";
+   link.href = g.url;
+   link.target = "_blank";
+   link.rel = "noopener noreferrer";
+   link.textContent = "Открыть ссылку";
+   actions.appendChild(link);
+  } else {
+   const link = document.createElement("a");
+   link.className = "link disabled";
+   link.href = "#";
+   link.setAttribute("aria-disabled", "true");
+   link.textContent = "Ссылка скоро";
+   link.addEventListener("click", e => e.preventDefault());
+   actions.appendChild(link);
+  }
+
+  const btn = document.createElement("button");
+  btn.className = "reserve";
+  btn.type = "button";
+  btn.disabled = !isLoaded || isBooked;
+  btn.textContent = !isLoaded ? "Загрузка..." : (isBooked ? "Забронировано" : "Забронировать");
+  if (!isBooked && isLoaded) {
+   btn.addEventListener("click", () => bookGift(g.id, btn));
+  }
+  actions.appendChild(btn);
+
+  if (isBooked && isLoaded) {
+   const cancelBtn = document.createElement("button");
+   cancelBtn.className = "cancel";
+   cancelBtn.type = "button";
+   cancelBtn.textContent = "Отменить";
+   cancelBtn.addEventListener("click", () => cancelBooking(g.id, cancelBtn));
+   actions.appendChild(cancelBtn);
+  }
+
+  const status = document.createElement("div");
+  status.className = "status";
+  status.setAttribute("aria-live", "polite");
+  status.textContent = !isLoaded ? "Проверяем статус..." : (isBooked ? "Уже забронировано ♡" : "Пока свободно");
+
+  body.appendChild(cat);
+  body.appendChild(title);
+  body.appendChild(desc);
+  body.appendChild(actions);
+  body.appendChild(status);
+
+  card.appendChild(pic);
+  card.appendChild(body);
+  root.appendChild(card);
+ });
+}
+
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+ document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("active"));
+ b.classList.add("active");
+ filter = b.dataset.filter;
+ render();
+}));
+
+render();
+loadBookings();
+setInterval(loadBookings, 5000);
+</script>
+</body>
+</html>
